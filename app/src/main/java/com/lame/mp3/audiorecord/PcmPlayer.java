@@ -52,48 +52,46 @@ public class PcmPlayer {
         if (mRecordFile == null || !mRecordFile.exists() || isPlaying) {
             return;
         }
-        new Thread(new Runnable() {
-            @Override public void run() {
-                if (mHandler != null) {
-                    Message msg = Message.obtain();
-                    msg.what = MSG_PLAY_START;
-                    mHandler.sendMessage(msg);
+        new Thread(() -> {
+            if (mHandler != null) {
+                Message msg = Message.obtain();
+                msg.what = MSG_PLAY_START;
+                mHandler.sendMessage(msg);
+            }
+            isPlaying = true;
+            int musicLength = (int) (mRecordFile.length() / 2);
+            short[] music = new short[musicLength];
+            try {
+                InputStream is = new FileInputStream(mRecordFile);
+                BufferedInputStream bis = new BufferedInputStream(is);
+                DataInputStream dis = new DataInputStream(bis);
+                int i = 0;
+                while (dis.available() > 0) {
+                    music[i] = dis.readShort();
+                    i++;
                 }
-                isPlaying = true;
-                int musicLength = (int) (mRecordFile.length() / 2);
-                short[] music = new short[musicLength];
-                try {
-                    InputStream is = new FileInputStream(mRecordFile);
-                    BufferedInputStream bis = new BufferedInputStream(is);
-                    DataInputStream dis = new DataInputStream(bis);
-                    int i = 0;
-                    while (dis.available() > 0) {
-                        music[i] = dis.readShort();
-                        i++;
+                dis.close();
+                mAudioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, 16000,
+                        AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, musicLength * 2,
+                        AudioTrack.MODE_STREAM);
+                mAudioTrack.setNotificationMarkerPosition(musicLength);
+                mAudioTrack.setPlaybackPositionUpdateListener(new AudioTrack.OnPlaybackPositionUpdateListener() {
+                    @Override public void onMarkerReached(AudioTrack track) {
+                        isPlaying = false;
+                        sendMessageEnd();
                     }
-                    dis.close();
-                    mAudioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, 16000,
-                            AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, musicLength * 2,
-                            AudioTrack.MODE_STREAM);
-                    mAudioTrack.setNotificationMarkerPosition(musicLength);
-                    mAudioTrack.setPlaybackPositionUpdateListener(new AudioTrack.OnPlaybackPositionUpdateListener() {
-                        @Override public void onMarkerReached(AudioTrack track) {
-                            isPlaying = false;
-                            sendMessageEnd();
-                        }
 
-                        @Override public void onPeriodicNotification(AudioTrack track) {
-                        }
-                    });
-                    mAudioTrack.play();
-                    mAudioTrack.write(music, 0, musicLength);
-                } catch (FileNotFoundException e) {
-                    e.printStackTrace();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+                    @Override public void onPeriodicNotification(AudioTrack track) {
+                    }
+                });
+                mAudioTrack.play();
+                mAudioTrack.write(music, 0, musicLength);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }).start();
     }
