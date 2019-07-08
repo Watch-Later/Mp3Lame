@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">Mp3Lame</string>
+    <string name="str_unknown_error">未知的错误</string>
+    <string name="effective_voice_too_short">有效录音时间太短，请重新录制</string>
+    <string name="no_record_voice_permission">请检查录音权限后录音</string>
+    <string name="record_file_not_found">录音文件</string>
 </resources>

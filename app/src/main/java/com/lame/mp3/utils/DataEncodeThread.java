@@ -14,10 +14,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * Created by kuyu on 2017/4/11.
- */
-
 public class DataEncodeThread extends HandlerThread implements AudioRecord.OnRecordPositionUpdateListener {
     private static final String TAG = "DataEncodeThread";
     private StopHandler mHandler;

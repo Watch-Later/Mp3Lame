@@ -1,8 +1,5 @@
 package com.lame.mp3.utils;
 
-/**
- * Created by kuyu on 2017/4/11.
- */
 
 public class LameUtil {
     static {
