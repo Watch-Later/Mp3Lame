@@ -97,12 +97,17 @@ public class AudioRecordManager {
     }
 
     public void stop() {
-        if (null == mBaseRecord) return;
-        if (mBaseRecord.isRecording() != null && mBaseRecord.isRecording()) mBaseRecord.stopRecording();
+        if (null == mBaseRecord || !isRecordFileExist()) return;
+
+        if (mBaseRecord.isRecording()) mBaseRecord.stopRecording();
     }
 
     public Boolean isRecording() {
         return mBaseRecord.isRecording();
+    }
+
+    public boolean isRecordFileExist() {
+        return mBaseRecord.isRecordFileExist();
     }
 
     public void release() {
@@ -119,7 +124,7 @@ public class AudioRecordManager {
 
     public String getSliceFilePath() {
         if (mSliceVoiceManager != null) {
-            return mSliceVoiceManager.getPcmFile().getAbsolutePath();
+            return mSliceVoiceManager.getSliceFile().getAbsolutePath();
         }
         return null;
     }

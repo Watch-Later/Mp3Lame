@@ -39,6 +39,8 @@ public abstract class BaseRecord {
 
     protected volatile boolean isRecording;
 
+    protected long duration;
+
     protected long startTime;
 
     protected Handler mHander;
@@ -53,14 +55,20 @@ public abstract class BaseRecord {
 
     public abstract void start();
 
-    public abstract boolean isRecordFileExist();
+    public boolean isRecordFileExist() {
+        if (mRecordFile != null && mRecordFile.exists()) {
+            return true;
+        }
+        return false;
+    }
 
     public abstract File getRecordFile();
 
-    public Boolean isRecording() {
-        if (mRecordFile == null || !mRecordFile.exists()) {
-            return null;
-        }
+    public long getDuration() {
+        return duration;
+    }
+
+    public boolean isRecording() {
         return isRecording;
     }
 
@@ -84,6 +92,7 @@ public abstract class BaseRecord {
                 return;
             }
         }
+        duration = 0l;
         start();
     }
 
@@ -105,7 +114,7 @@ public abstract class BaseRecord {
 
     protected void sendTimeChangeMsg() {
         if (null == mHander) return;
-        long duration = System.currentTimeMillis() - startTime;
+        duration = System.currentTimeMillis() - startTime;
         Message msg = new Message();
         msg.what = MSG_TIME_CHANGE;
         msg.obj = duration;

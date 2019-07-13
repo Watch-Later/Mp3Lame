@@ -1,9 +1,9 @@
 package com.lame.mp3.utils;
 
 import android.os.AsyncTask;
-import android.util.Base64;
 import android.util.Log;
 import com.lame.mp3.AudioConstant;
+import com.lame.mp3.function.CommonFunction;
 import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -27,13 +27,18 @@ public class SliceVoiceManager {
     private long duration;
     private List<Data> mDataList = new ArrayList<>();
     private String fileName;
-    private File pcmFile;
+    private File mSliceFile;
     private String dir;
 
     public static final int SLICE_MODE_ALL = 1;
     public static final int SLICE_MODE_PART = 2;
     public int mode = SLICE_MODE_PART;
     private BaseRecord mBaseRecord;
+    long byteRate = (BaseRecord.DEFAULT_AUDIO_FORMAT == PCMFormat.PCM_16BIT ? 16 : 8)
+            * BaseRecord.DEFAULT_SAMPLING_RATE * 1
+            / 8;
+
+    private boolean isAddHeader;
 
     public SliceVoiceManager(BaseRecord baseRecord, long sliceLength, int VOLUME_THRESHOLD) {
         this.mBaseRecord = baseRecord;
@@ -116,28 +121,39 @@ public class SliceVoiceManager {
             return;
         }
         if (mode == SLICE_MODE_ALL) {
-            createPcmFile();
-            if (pcmFile.exists()) {
-                savePcmToFile();
+            createSliceFile();
+            if (mSliceFile.exists()) {
+                saveSliceDataToFile();
             }
         } else if (mode == SLICE_MODE_PART) {
+            //测试，将数据保存文件
+            //createWavFile();
             new EncodeAsyncTask().execute();
         }
     }
 
-    private void savePcmToFile() {
+    private void saveSliceDataToFile() {
         try {
-            OutputStream os = new FileOutputStream(pcmFile);
+            OutputStream os = new FileOutputStream(mSliceFile);
             BufferedOutputStream bos = new BufferedOutputStream(os);
             DataOutputStream dos = new DataOutputStream(bos);
             if (mDataList.isEmpty()) {
                 return;
             }
+            int length = 0;
+            for (int i = 0; i < mDataList.size(); i++) {
+                length += mDataList.get(i).rawData.length;
+            }
+            if (isAddHeader) {
+                byte[] header = PcmToWav.getWavHeader(length * 2, length * 2 + 36, BaseRecord.DEFAULT_SAMPLING_RATE,
+                        1, byteRate);
+                dos.write(header, 0, header.length);
+            }
             for (int i = 0; i < mDataList.size(); i++) {
                 Data data = mDataList.get(i);
                 short[] buffer = data.getRawData();
                 for (int j = 0; j < buffer.length; j++) {
-                    dos.writeShort(buffer[j]);
+                    dos.writeShort(Short.reverseBytes(buffer[j]));
                 }
             }
             dos.flush();
@@ -160,19 +176,41 @@ public class SliceVoiceManager {
 
     public String encryptToBase64() {
         Log.i("tag", "开始时间" + System.currentTimeMillis());
-        StringBuilder sb = new StringBuilder();
+        int length = 0;
         for (int i = 0; i < mDataList.size(); i++) {
-            short[] data = mDataList.get(i).getRawData();
-            byte[] bytes = new byte[data.length * 2];
-            for (int j = 0; j < data.length; j++) {
-                bytes[j * 2] = shortToByteArray(data[i])[0];
-                bytes[j * 2 + 1] = shortToByteArray(data[i])[1];
-            }
-            sb.append(Base64.encodeToString(bytes, Base64.DEFAULT));
+            length += mDataList.get(i).rawData.length;
         }
-        dataBase64 = sb.toString();
-        Log.i("tag", "结束时间" + dataBase64);
+
+        byte[] bytes = new byte[length * 2];
+        int index = 0;
+        for (int i = 0; i < mDataList.size(); i++) {
+            short[] shorts = mDataList.get(i).getRawData();
+            for (int j = 0; j < shorts.length; j++) {
+                byte[] tmpByte = CommonFunction.GetBytes(shorts[j], false);
+                bytes[j * 2 + index] = tmpByte[0];
+                bytes[j * 2 + 1 + index] = tmpByte[1];
+            }
+            index += shorts.length * 2;
+        }
+        if (isAddHeader) {
+            byte[] header = PcmToWav.getWavHeader(length * 2, length * 2 + 36, BaseRecord.DEFAULT_SAMPLING_RATE,
+                    1, byteRate);
+
+            byte[] result = combineBytes(header, bytes);
+            //测试，将数据保存成文件
+            //writeBytesToFile(result);
+            dataBase64 = android.util.Base64.encodeToString(result, android.util.Base64.NO_WRAP);
+        } else {
+            dataBase64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP);
+        }
         return dataBase64;
+    }
+
+    public byte[] combineBytes(byte[] data1, byte[] data2) {
+        byte[] data3 = new byte[data1.length + data2.length];
+        System.arraycopy(data1, 0, data3, 0, data1.length);
+        System.arraycopy(data2, 0, data3, data1.length, data2.length);
+        return data3;
     }
 
     class EncodeAsyncTask extends AsyncTask<Void, Integer, String> {
@@ -190,17 +228,66 @@ public class SliceVoiceManager {
         }
     }
 
-    public File getPcmFile() {
-        return pcmFile;
+    private void savePcmToWav() {
+        try {
+            OutputStream os = new FileOutputStream(mSliceFile);
+            BufferedOutputStream bos = new BufferedOutputStream(os);
+            DataOutputStream dos = new DataOutputStream(bos);
+            if (mDataList.isEmpty()) {
+                return;
+            }
+            int length = 0;
+            for (int i = 0; i < mDataList.size(); i++) {
+                length += mDataList.get(i).rawData.length;
+            }
+            byte[] header = PcmToWav.getWavHeader(length * 2, length * 2 + 36, BaseRecord.DEFAULT_SAMPLING_RATE,
+                    1, byteRate);
+            dos.write(header, 0, header.length);
+            for (int i = 0; i < mDataList.size(); i++) {
+                Data data = mDataList.get(i);
+                short[] shorts = data.getRawData();
+                for (int j = 0; j < shorts.length; j++) {
+                    dos.writeShort(Short.reverseBytes(shorts[j]));
+                }
+            }
+            dos.flush();
+            dos.close();
+            if (mBaseRecord != null) {
+                mBaseRecord.sendCompleteEncode();
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            if (mBaseRecord != null) {
+                mBaseRecord.sendErrorMsg(AudioConstant.ERROR_FILE_NOT_FOUND);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            if (mBaseRecord != null) {
+                mBaseRecord.sendErrorMsg(AudioConstant.ERROR_UNKNOW);
+            }
+        }
+    }
+
+    private void writeBytesToFile(byte[] bytes) {
+        try {
+            FileOutputStream os = new FileOutputStream(mSliceFile);
+            Log.i("tag", "fdafasdf:" + mSliceFile.getAbsolutePath());
+            os.write(bytes, 0, bytes.length);
+            os.flush();
+            os.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public File getSliceFile() {
+        return mSliceFile;
     }
 
     public static byte[] shortToByteArray(short s) {
-        byte[] targets = new byte[2];
-        for (int i = 0; i < 2; i++) {
-            int offset = (targets.length - 1 - i) * 8;
-            targets[i] = (byte) ((s >>> offset) & 0xff);
-        }
-        return targets;
+        return new byte[] {(byte) (s & 0x00FF), (byte) ((s & 0xFF00) >> 8)};
     }
 
     public void reset() {
@@ -208,14 +295,24 @@ public class SliceVoiceManager {
         isSlicing = false;
         mDataList.clear();
         dataBase64 = null;
-        pcmFile = null;
+        mSliceFile = null;
     }
 
-    private void createPcmFile() {
-        fileName = dir + System.currentTimeMillis() + AudioConstant.PcmSuffix;
-        pcmFile = new File(fileName);
+    private void createSliceFile() {
+        fileName = dir + System.currentTimeMillis() + (isAddHeader ? AudioConstant.WavSuffix : AudioConstant.PcmSuffix);
+        mSliceFile = new File(fileName);
         try {
-            pcmFile.createNewFile();
+            mSliceFile.createNewFile();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void createWavFile() {
+        fileName = dir + System.currentTimeMillis() + AudioConstant.WavSuffix;
+        mSliceFile = new File(fileName);
+        try {
+            mSliceFile.createNewFile();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -239,5 +336,9 @@ public class SliceVoiceManager {
 
     public long getDuration() {
         return duration;
+    }
+
+    public void setAddHeader(boolean addHeader) {
+        isAddHeader = addHeader;
     }
 }

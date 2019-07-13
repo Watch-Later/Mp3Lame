@@ -234,13 +234,6 @@ public class MP3Recorder extends BaseRecord {
         }
     }
 
-    public boolean isRecordFileExist() {
-        if (mRecordFile != null && mRecordFile.exists()) {
-            return true;
-        }
-        return false;
-    }
-
     public File getRecordFile() {
         return mRecordFile;
     }

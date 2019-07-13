@@ -25,7 +25,7 @@ import java.io.OutputStream;
 public class PcmComposeRecorder extends BaseRecord {
 
     private AudioTrack mAudioTrack;
-    private long totalTime = -1l;
+    private long endTime;
     private int audioRecordBufferSize;
     private static final PCMFormat pcmFormat = PCMFormat.PCM_16BIT;
     private final static int sampleDuration = 100;
@@ -100,13 +100,14 @@ public class PcmComposeRecorder extends BaseRecord {
                     if (audioRecordReadDataSize > 0) {
                         byte[] outputByteArray = getByteBuffer(audioRecordBuffer, audioRecordReadDataSize, false);
                         bos.write(outputByteArray);
-                        totalTime = System.currentTimeMillis() - startTime;
+                        duration = System.currentTimeMillis() - startTime;
                         sendTimeChangeMsg();
                     }
                 }
                 audioRecord.stop();
                 dos.close();
                 audioRecord.release();
+                endTime = System.currentTimeMillis();
                 sendCompleteRecord();
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
@@ -156,20 +157,9 @@ public class PcmComposeRecorder extends BaseRecord {
         return mRecordFile;
     }
 
-    public Boolean isRecording() {
-        if (mRecordFile == null || !mRecordFile.exists()) {
-            return null;
-        }
-        return isRecording;
-    }
-
     @Override
     public void stopRecording() {
         isRecording = false;
-    }
-
-    public long getTotalTime() {
-        return totalTime;
     }
 
     public void deleteRecordFile() {

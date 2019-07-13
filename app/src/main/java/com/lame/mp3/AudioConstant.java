@@ -40,6 +40,7 @@ public class AudioConstant {
     public static final String LyricSuffix = ".lrc";
     public static final String RecordSuffix = ".mp3";
     public static final String PcmSuffix = ".pcm";
+    public static final String WavSuffix = ".wav";
 
     public static final int ERROR_UNKNOW = 0;
     public static final int ERROR_FILE_NOT_FOUND = 1;
