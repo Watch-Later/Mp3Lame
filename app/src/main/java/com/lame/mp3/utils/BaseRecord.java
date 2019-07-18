@@ -15,7 +15,6 @@ public abstract class BaseRecord {
 
     //16K采集率
     public static final int DEFAULT_SAMPLING_RATE = 16000;
-    public static final int HIGH_SAMPLING_RATE = 44100;
     //格式
     public static final int DEFAULT_CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO;
     /**
@@ -33,7 +32,7 @@ public abstract class BaseRecord {
     public static final int MSG_FILE_NOT_EXIST = 5;
 
     //加入录音时间限制
-    public static final long MAX_DURATION = 60 * 1000;
+    public static long MAX_DURATION = 60 * 1000;
     public static final long MIN_DURATION = 5 * 1000;
     protected static String AUDIO_SUFFIX;
 
@@ -51,6 +50,11 @@ public abstract class BaseRecord {
         mHander = hander;
     }
 
+    /**
+     * 存放录音文件的目录
+     */
+    protected String dir;
+
     public abstract void stopRecording();
 
     public abstract void start();
@@ -63,6 +67,10 @@ public abstract class BaseRecord {
     }
 
     public abstract File getRecordFile();
+
+    public File getEncodeFile() {
+        return null;
+    }
 
     public long getDuration() {
         return duration;
@@ -141,5 +149,9 @@ public abstract class BaseRecord {
             mRecordFile.delete();
         }
         mRecordFile = null;
+    }
+
+    public static void setMaxDuration(long maxDuration) {
+        MAX_DURATION = maxDuration;
     }
 }

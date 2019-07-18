@@ -4,9 +4,10 @@ import android.media.AudioRecord;
 import android.media.AudioTrack;
 import android.util.Log;
 import com.lame.mp3.AudioConstant;
+import com.lame.mp3.audio.PcmToWav;
+import com.lame.mp3.utils.AudioConfig;
 import com.lame.mp3.utils.BaseRecord;
 import com.lame.mp3.utils.PCMFormat;
-import com.lame.mp3.utils.PcmToWav;
 import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -15,9 +16,6 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.ShortBuffer;
 
 public class PcmRecorder extends BaseRecord {
 
@@ -28,9 +26,21 @@ public class PcmRecorder extends BaseRecord {
     private boolean isAddHeader;
     int audioRecordMinBufferSize = AudioRecord.getMinBufferSize(DEFAULT_SAMPLING_RATE, DEFAULT_CHANNEL_CONFIG,
             DEFAULT_AUDIO_FORMAT.getAudioFormat());
+    private long byteRate;
 
     public PcmRecorder() {
         AUDIO_SUFFIX = AudioConstant.PcmSuffix;
+    }
+
+    public PcmRecorder(AudioConfig config) {
+        if (config.format == AudioConstant.WavSuffix) {
+            AUDIO_SUFFIX = config.format;
+            isAddHeader = true;
+            byteRate = (BaseRecord.DEFAULT_AUDIO_FORMAT == PCMFormat.PCM_16BIT ? 16 : 8)
+                    * BaseRecord.DEFAULT_SAMPLING_RATE * 1 / 8;
+        } else {
+            isAddHeader = false;
+        }
     }
 
     public void start() {
@@ -93,33 +103,20 @@ public class PcmRecorder extends BaseRecord {
         FileInputStream in = null;
         DataOutputStream dos = null;
         long totalAudioLen;
-        long byteRate = (DEFAULT_AUDIO_FORMAT == PCMFormat.PCM_16BIT ? 16 : 8) * DEFAULT_SAMPLING_RATE * 1 / 8;
         try {
             in = new FileInputStream(mRecordFile);
             dos = new DataOutputStream(new FileOutputStream(mWavFile));
-            byte[] bytes = new byte[in.available()];//in.available()是得到文件的字节数
-            int length = bytes.length;
-            while (length != 1) {
-                long i = in.read(bytes, 0, bytes.length);
-                if (i == -1) {
-                    break;
-                }
-                length -= i;
-            }
-            int dataLength = bytes.length;
-            int shortlength = dataLength / 2;
-            ByteBuffer byteBuffer = ByteBuffer.wrap(bytes, 0, dataLength);
-            ShortBuffer shortBuffer = byteBuffer.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer();//此处设置大小端
-            short[] shorts = new short[shortlength];
-            shortBuffer.get(shorts, 0, shortlength);
 
             totalAudioLen = in.getChannel().size();
             //由于不包括RIFF和WAV
             byte[] header = PcmToWav.getWavHeader(totalAudioLen, totalAudioLen + 36, DEFAULT_SAMPLING_RATE,
                     1, byteRate);
             dos.write(header, 0, header.length);
-            for (int i = 0; i < shorts.length; i++) {
-                dos.writeShort(shorts[i]);
+            int length = 0;
+            int buffer_size = 1024;
+            byte[] buffer = new byte[buffer_size];
+            while ((length = in.read(buffer, 0, buffer_size)) != -1) {
+                dos.write(buffer, 0, length);
             }
             in.close();
             dos.close();
@@ -151,11 +148,11 @@ public class PcmRecorder extends BaseRecord {
     }
 
     @Override public File getRecordFile() {
-        if (isAddHeader) {
-            return mWavFile;
-        } else {
-            return mRecordFile;
-        }
+        return mRecordFile;
+    }
+
+    @Override public File getEncodeFile() {
+        return mWavFile;
     }
 
     @Override
@@ -168,10 +165,6 @@ public class PcmRecorder extends BaseRecord {
             mRecordFile.delete();
         }
         mRecordFile = null;
-    }
-
-    public void setAddHeader(boolean addHeader) {
-        isAddHeader = addHeader;
     }
 
     public void release() {

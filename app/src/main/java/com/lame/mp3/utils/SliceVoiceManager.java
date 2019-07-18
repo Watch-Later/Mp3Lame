@@ -3,6 +3,7 @@ package com.lame.mp3.utils;
 import android.os.AsyncTask;
 import android.util.Log;
 import com.lame.mp3.AudioConstant;
+import com.lame.mp3.audio.PcmToWav;
 import com.lame.mp3.function.CommonFunction;
 import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;
@@ -18,7 +19,7 @@ import java.util.List;
  * created by wangguoqun at 2019-06-19
  */
 public class SliceVoiceManager {
-    private long sliceLength;
+    private long sliceLength = -1l;
     private long startTime;
     private int VOLUME_THRESHOLD = 40;
     private String dataBase64;
@@ -34,27 +35,25 @@ public class SliceVoiceManager {
     public static final int SLICE_MODE_PART = 2;
     public int mode = SLICE_MODE_PART;
     private BaseRecord mBaseRecord;
-    long byteRate = (BaseRecord.DEFAULT_AUDIO_FORMAT == PCMFormat.PCM_16BIT ? 16 : 8)
-            * BaseRecord.DEFAULT_SAMPLING_RATE * 1
-            / 8;
-
+    private long byteRate;
     private boolean isAddHeader;
 
-    public SliceVoiceManager(BaseRecord baseRecord, long sliceLength, int VOLUME_THRESHOLD) {
-        this.mBaseRecord = baseRecord;
-        this.sliceLength = sliceLength;
-        this.VOLUME_THRESHOLD = VOLUME_THRESHOLD;
-        mode = SLICE_MODE_PART;
-    }
-
-    public SliceVoiceManager(int mode, String fileName) {
-        this.mode = mode;
-        this.fileName = fileName;
-    }
-
-    public SliceVoiceManager(BaseRecord baseRecord, int mode) {
-        this.mBaseRecord = baseRecord;
-        this.mode = mode;
+    public SliceVoiceManager(BaseRecord baseRecord, AudioConfig config) {
+        mBaseRecord = baseRecord;
+        this.sliceLength = config.sliceLength;
+        if (sliceLength > 0l) {
+            mode = SLICE_MODE_PART;
+        } else {
+            mode = SLICE_MODE_ALL;
+        }
+        if (config.format == AudioConstant.WavSuffix) {
+            isAddHeader = true;
+            byteRate = (BaseRecord.DEFAULT_AUDIO_FORMAT == PCMFormat.PCM_16BIT ? 16 : 8)
+                    * BaseRecord.DEFAULT_SAMPLING_RATE * 1 / 8;
+        } else {
+            isAddHeader = false;
+        }
+        this.VOLUME_THRESHOLD = config.volumeThreshold;
     }
 
     public boolean judgeToStart(int volume, long recordStartTime) {
@@ -338,7 +337,4 @@ public class SliceVoiceManager {
         return duration;
     }
 
-    public void setAddHeader(boolean addHeader) {
-        isAddHeader = addHeader;
-    }
 }

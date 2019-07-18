@@ -5,6 +5,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
+import com.lame.mp3.listener.DataEncodeCallback;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -20,7 +21,7 @@ public class DataEncodeThread extends HandlerThread implements AudioRecord.OnRec
     private static final int PROCESS_STOP = 1;
     private byte[] mMp3Buffer;
     private FileOutputStream mFileOutputStream;
-    private static WeakReference<MP3Recorder> mp3RecorderRef;
+    private static WeakReference<DataEncodeCallback> mCallback;
 
     private static class StopHandler extends Handler {
 
@@ -39,7 +40,7 @@ public class DataEncodeThread extends HandlerThread implements AudioRecord.OnRec
                 // Cancel any event left in the queue
                 removeCallbacksAndMessages(null);
                 encodeThread.flushAndRelease();
-                if (mp3RecorderRef != null) mp3RecorderRef.get().callBack();
+                if (mCallback != null) mCallback.get().callback();
                 getLooper().quit();
             }
         }
@@ -58,11 +59,11 @@ public class DataEncodeThread extends HandlerThread implements AudioRecord.OnRec
      *
      * @throws FileNotFoundException
      */
-    public DataEncodeThread(MP3Recorder mp3Recorder, File file, int bufferSize) throws FileNotFoundException {
+    public DataEncodeThread(DataEncodeCallback callback, File file, int bufferSize) throws FileNotFoundException {
         super(TAG);
         this.mFileOutputStream = new FileOutputStream(file);
         mMp3Buffer = new byte[(int) (7200 + (bufferSize * 2 * 1.25))];
-        mp3RecorderRef = new WeakReference<MP3Recorder>(mp3Recorder);
+        mCallback = new WeakReference<>(callback);
     }
 
     public DataEncodeThread(File file, int bufferSize) throws FileNotFoundException {

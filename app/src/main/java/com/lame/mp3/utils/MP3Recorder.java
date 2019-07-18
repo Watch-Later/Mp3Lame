@@ -1,13 +1,14 @@
 package com.lame.mp3.utils;
 
 import android.media.AudioRecord;
+import android.os.Handler;
 import android.util.Log;
 import com.lame.mp3.AudioConstant;
+import com.lame.mp3.listener.DataEncodeCallback;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 
-public class MP3Recorder extends BaseRecord {
+public class MP3Recorder extends BaseRecord implements DataEncodeCallback {
 
     private static final String TAG = MP3Recorder.class.getSimpleName();
 
@@ -15,15 +16,15 @@ public class MP3Recorder extends BaseRecord {
      * 以下三项为默认配置参数。Google Android文档明确表明只有以下3个参数是可以在所有设备上保证支持的。
      */
     //======================Lame Default Settings=====================
-    private static final int DEFAULT_LAME_MP3_QUALITY = 7;
+    public static final int DEFAULT_LAME_MP3_QUALITY = 7;
     /**
      * 与DEFAULT_CHANNEL_CONFIG相关，因为是mono单声，所以是1
      */
-    private static final int DEFAULT_LAME_IN_CHANNEL = 1;
+    public static final int DEFAULT_LAME_IN_CHANNEL = 1;
     /**
      * Encoded bit rate. MP3 file will be encoded with bit rate 32kbps
      */
-    private static final int DEFAULT_LAME_MP3_BIT_RATE = 32;
+    public static final int DEFAULT_LAME_MP3_BIT_RATE = 32;
 
     //==================================================================
 
@@ -35,10 +36,6 @@ public class MP3Recorder extends BaseRecord {
     private int mBufferSize;
     private short[] mPCMBuffer;
     private DataEncodeThread mEncodeThread;
-
-    private int mMaxSize;
-
-    private ArrayList<Short> dataList;
 
     private SliceVoiceManager mSliceVoiceManager;
 
@@ -95,7 +92,6 @@ public class MP3Recorder extends BaseRecord {
                         sliceVoice(mPCMBuffer);
                         mEncodeThread.addTask(mPCMBuffer, readSize);
                         calculateRealVolume(mPCMBuffer, readSize);
-                        sendData(mPCMBuffer, readSize);
                         sendTimeChangeMsg();
                     }
                 }
@@ -130,41 +126,11 @@ public class MP3Recorder extends BaseRecord {
         }
     }
 
-    private void sendData(short[] shorts, int readSize) {
-        if (dataList != null) {
-            int length = readSize / 300;
-            short resultMax = 0, resultMin = 0;
-            for (short i = 0, k = 0; i < length; i++, k += 300) {
-                for (short j = k, max = 0, min = 1000; j < k + 300; j++) {
-                    if (shorts[j] > max) {
-                        max = shorts[j];
-                        resultMax = max;
-                    } else if (shorts[j] < min) {
-                        min = shorts[j];
-                        resultMin = min;
-                    }
-                }
-                dataList.add(resultMax);
-            }
-        }
-    }
-
     private void sliceVoice(short[] shorts) {
         if (mSliceVoiceManager == null) return;
         if (mSliceVoiceManager.judgeToStart(mVolume, startTime)) {
             mSliceVoiceManager.writeData(shorts);
         }
-    }
-
-    /**
-     * 设置数据的获取显示，设置最大的获取数，一般都是控件大小/线的间隔offset
-     *
-     * @param dataList 数据
-     * @param maxSize 最大个数
-     */
-    public void setDataList(ArrayList<Short> dataList, int maxSize) {
-        this.dataList = dataList;
-        this.mMaxSize = maxSize;
     }
 
     private int mVolume;
@@ -238,10 +204,6 @@ public class MP3Recorder extends BaseRecord {
         return mRecordFile;
     }
 
-    public void callBack() {
-        sendCompleteRecord();
-    }
-
     @Override
     public void setSliceVoiceManager(SliceVoiceManager sliceVoiceManager) {
         mSliceVoiceManager = sliceVoiceManager;
@@ -249,5 +211,9 @@ public class MP3Recorder extends BaseRecord {
 
     @Override public void stopRecording() {
         isRecording = false;
+    }
+
+    @Override public void callback() {
+        sendCompleteRecord();
     }
 }

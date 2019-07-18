@@ -1,4 +1,4 @@
-package com.lame.mp3;
+package com.lame.mp3.ui;
 
 import android.Manifest;
 import android.content.Context;
@@ -13,6 +13,7 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import com.lame.mp3.R;
 import java.util.ArrayList;
 import java.util.List;
 

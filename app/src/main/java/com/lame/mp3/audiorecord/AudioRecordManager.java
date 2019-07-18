@@ -5,9 +5,11 @@ import android.os.Message;
 import android.util.Log;
 import com.lame.mp3.AudioConstant;
 import com.lame.mp3.R;
+import com.lame.mp3.utils.AudioConfig;
 import com.lame.mp3.utils.BaseRecord;
 import com.lame.mp3.utils.MP3Recorder;
 import com.lame.mp3.utils.SliceVoiceManager;
+import java.io.File;
 
 
 public class AudioRecordManager {
@@ -21,35 +23,40 @@ public class AudioRecordManager {
      * MP3_SLICE_PART 上传数据分析
      * PCM_HIGH_RATE 合成mp3
      */
-    public enum AUDIO_FORMAT {MP3, MP3_SLICE_ALL, MP3_SLICE_PART, PCM, PCM_HIGH_RATE}
+    public enum AUDIO_FORMAT {MP3, SLICE_ALL_WAV, SLICE_PART_WAV, PCM, WAV}
 
     private AUDIO_FORMAT audioFormat = AUDIO_FORMAT.MP3;
 
     public AudioRecordManager(AUDIO_FORMAT audioFormat) {
         this.audioFormat = audioFormat;
+        AudioConfig config = new AudioConfig();
         switch (audioFormat) {
             case MP3:
                 mBaseRecord = new MP3Recorder();
                 break;
-            case MP3_SLICE_ALL:
+            case SLICE_ALL_WAV:
                 mBaseRecord = new MP3Recorder();
-                mSliceVoiceManager = new SliceVoiceManager(mBaseRecord, SliceVoiceManager.SLICE_MODE_ALL);
+                config.setFormat(AudioConstant.WavSuffix);
+                mSliceVoiceManager = new SliceVoiceManager(mBaseRecord, config);
                 break;
-            case MP3_SLICE_PART:
+            case SLICE_PART_WAV:
                 mBaseRecord = new MP3Recorder();
-                mSliceVoiceManager = new SliceVoiceManager(mBaseRecord, 4 * 1000, 40);
+                config.setFormat(AudioConstant.WavSuffix).setSliceLength(4l * 1000).setVolumeThreshold(40);
+                mSliceVoiceManager = new SliceVoiceManager(mBaseRecord, config);
                 break;
             case PCM:
                 mBaseRecord = new PcmRecorder();
                 break;
-            case PCM_HIGH_RATE:
-                mBaseRecord = new PcmComposeRecorder();
+            case WAV:
+                config.setFormat(AudioConstant.WavSuffix);
+                mBaseRecord = new PcmRecorder(config);
                 break;
         }
         mBaseRecord.setHander(mHandler);
         if (mSliceVoiceManager != null) {
             mBaseRecord.setSliceVoiceManager(mSliceVoiceManager);
         }
+        setMaxDuration(60 * 1000);
     }
 
     Handler mHandler = new Handler() {
@@ -102,7 +109,7 @@ public class AudioRecordManager {
         if (mBaseRecord.isRecording()) mBaseRecord.stopRecording();
     }
 
-    public Boolean isRecording() {
+    public boolean isRecording() {
         return mBaseRecord.isRecording();
     }
 
@@ -129,6 +136,17 @@ public class AudioRecordManager {
         return null;
     }
 
+    public String getEncodeFilePath() {
+        if (mBaseRecord == null) {
+            return null;
+        }
+        File file = mBaseRecord.getEncodeFile();
+        if (file != null && file.exists()) {
+            return file.getAbsolutePath();
+        }
+        return null;
+    }
+
     public long getSliceVoiceDuration() {
         if (mSliceVoiceManager != null) {
             return mSliceVoiceManager.getDuration();
@@ -143,12 +161,23 @@ public class AudioRecordManager {
         return "";
     }
 
+    public long getDuration() {
+        return mBaseRecord.getDuration();
+    }
+
     public void deleteRecordFile() {
         mBaseRecord.deleteRecordFile();
     }
 
     public void setAudioManageEvent(AudioManageEvent audioManageEvent) {
         this.audioManageEvent = audioManageEvent;
+    }
+
+    public void setMaxDuration(long maxDuration) {
+        if (mBaseRecord == null || maxDuration < 0l) {
+            return;
+        }
+        mBaseRecord.setMaxDuration(maxDuration);
     }
 
     public static int getErrorText(int code) {

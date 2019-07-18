@@ -1,10 +1,6 @@
 package com.lame.mp3.audio;
 
-import android.os.Handler;
-import android.os.Looper;
 import com.lame.mp3.listener.ConvertOperateInterface;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
@@ -23,6 +19,30 @@ public class PcmToWav {
         out.write(getWavHeader(totalAudioLen, totalAudioLen, longSampleRate, channels, byteRate), 0, 44);
     }
 
+    /*
+     头部示例
+    5249 4646
+
+    24f4 0100
+
+    5741 5645
+
+    666d 7420
+
+    1000 0000
+
+    0100 1000
+
+    803e 0000
+
+    1000 0000
+
+    2000 1000
+
+    6461 7461
+
+    00f4 0100
+     */
     public static byte[] getWavHeader(long totalAudioLen, long totalDataLen,
             long longSampleRate, int channels, long byteRate) {
         byte[] header = new byte[44];
