@@ -6,7 +6,7 @@
     function getQueryString(name) {
       var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i"); 
       let index = window.location.hash.indexOf('?')
-      let searchStr =  window.location.hash.substring(index, window.location.hash.length)
+      let searchStr =  window.location.search.substring(index, window.location.hash.length)
       var r = searchStr.substr(1).match(reg); 
       if (r != null) return unescape(r[2]); return null; 
     }
